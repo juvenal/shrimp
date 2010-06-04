@@ -828,8 +828,8 @@ Wardisotropy(
 {
     normal Nf = faceforward( Nn, In);
     vector Vf = -In, Ln, Hn;
-    float ndotv = Nf.Vf, ndotl, ndoth, tandelta2;
-	float m2 = roughness * roughness;
+    float ndotv = Nf.Vf, ndotl, ndoth;
+	float m2 = SQR(roughness), c2, expfactor;
 
 	uniform float nonspec;
 	color C = color(0);
@@ -848,11 +848,13 @@ Wardisotropy(
 
 			Hn = normalize(Ln + Vf);
 			ndoth = Nf.Hn;
-
-			tandelta2 = SQR( sqrt( max(0, 1 - SQR(ndoth))) / ndoth );
-
-			C += Cl * (1-nonspec) * ndotl * ( exp(-tandelta2/m2) /
-							(4 * m2 * sqrt( ndotl * ndotv )) );
+			c2 = SQR(ndoth);
+			// exp( -( tandelta^2 / m^2 ))
+			expfactor = exp( (c2-1) / (c2 * m2) );
+			// Ward, thetai exp( (c2-1)/(c2 m2)) / (4 m2 sqrt(i, o) =
+			// sqrt(i) exp((c2-1)/(c2m2)) / (4 m2 sqrt(o))
+			C += Cl * (1-nonspec) * ( sqrt(ndotl) * expfactor / (
+						4 * m2 * sqrt(ndotv) ) );
 		}
 	}
 	return C;
@@ -1052,14 +1054,12 @@ color aschlick(
 			F = schlickfresnel( Ln, Hn, ior); // L.H = V.H
 
 			// D(t,v,v',w) = G(v)G(v')Z(t)A(w) / (4πvv') + (1 -G(v)G(v')/π *A
-			D = F * ( Z*A*G / (4*costheta) + (cospsi * (1-G)) );
+			D = F * ( Z*A*G / (4*costheta) + (cospsi * A * (1-G)) );
 
 			C += Cl * (1-nonspec) * D;
 		}
 	}
-
-	return C;
-//	return clamp(C, color(0), color(1));
+	return clamp(C, color(0), color(1));
 }				
 
 ////////////////////////////////////////////////////////////////////////////////
